@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  pubsub-emulator:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
+    command: >
+      sh -c "gcloud beta emulators pubsub start --host-port=0.0.0.0:8085"
+    ports:
+      - "8085:8085"
+    environment:
+      - CLOUDSDK_CORE_PROJECT=test-project
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  pubsub-setup:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
+    depends_on:
+      pubsub-emulator:
+        condition: service_healthy
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - CLOUDSDK_CORE_PROJECT=test-project
+    command: >
+      sh -c "
+        echo 'Setting up Pub/Sub topics and subscriptions...'
+        
+        # Create topics
+        gcloud pubsub topics create events-topic --quiet || echo 'Topic events-topic already exists'
+        gcloud pubsub topics create orders-topic --quiet || echo 'Topic orders-topic already exists'
+        gcloud pubsub topics create metrics-topic --quiet || echo 'Topic metrics-topic already exists'
+        
+        # Create subscriptions  
+        gcloud pubsub subscriptions create events-subscription \
+          --topic=events-topic \
+          --ack-deadline=60 \
+          --message-retention-duration=7d \
+          --quiet || echo 'Subscription events-subscription already exists'
+          
+        gcloud pubsub subscriptions create orders-subscription \
+          --topic=orders-topic \
+          --ack-deadline=30 \
+          --message-retention-duration=1d \
+          --quiet || echo 'Subscription orders-subscription already exists'
+          
+        gcloud pubsub subscriptions create metrics-subscription \
+          --topic=metrics-topic \
+          --ack-deadline=10 \
+          --message-retention-duration=1d \
+          --enable-message-ordering \
+          --quiet || echo 'Subscription metrics-subscription already exists'
+        
+        echo 'Pub/Sub setup complete!'
+        
+        # Keep container running for debugging
+        tail -f /dev/null
+      "
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      pubsub-setup:
+        condition: service_started
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - MIX_ENV=test
+    volumes:
+      - .:/app
+      - test_deps:/app/deps
+      - test_build:/app/_build
+    working_dir: /app
+    command: >
+      sh -c "
+        echo 'Waiting for Pub/Sub emulator to be ready...'
+        sleep 10
+        echo 'Running tests...'
+        mix test --only integration
+      "
+
+volumes:
+  test_deps:
+  test_build:
