@@ -1,0 +1,29 @@
+FROM elixir:1.16-alpine
+
+# Install build dependencies
+RUN apk add --no-cache build-base git curl
+
+# Set working directory
+WORKDIR /app
+
+# Copy mix files
+COPY mix.exs mix.lock ./
+
+# Install hex and rebar
+RUN mix local.hex --force && \
+    mix local.rebar --force
+
+# Set test environment
+ENV MIX_ENV=test
+
+# Get dependencies
+RUN mix deps.get
+
+# Copy source code
+COPY . .
+
+# Compile the project
+RUN mix compile
+
+# Default command
+CMD ["mix", "test"]

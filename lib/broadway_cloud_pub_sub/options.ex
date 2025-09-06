@@ -31,6 +31,12 @@ defmodule BroadwayCloudPubSub.Options do
           retry_delay_ms: 300,
           max_retries: 5}
 
+      For high-performance scenarios, you can use the gRPC client:
+
+        {BroadwayCloudPubSub.GrpcClient,
+          pool_size: 10,
+          endpoint: "pubsub.googleapis.com:443"}
+
       These options will be merged with the options to the producer and passed
       to the client init/1 function.
       """
@@ -105,6 +111,20 @@ defmodule BroadwayCloudPubSub.Options do
       to fetch an authentication token. It should return `{:ok, String.t()} | {:error, any()}`.
       By default this will invoke `Goth.fetch/1` with the `:goth` option.
       See the "Custom token generator" section below for more information.
+      """
+    ],
+    credentials: [
+      type: :any,
+      default: :default,
+      doc: """
+      Authentication credentials for gRPC client. Options:
+      
+      * `:default` - Uses `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+      * `:insecure` - No authentication (for emulator use)
+      * `{:goth, goth_name}` - Uses the specified Goth server
+      * `{:token_generator, {module, function, args}}` - Custom token generator
+      
+      This option is only used by `BroadwayCloudPubSub.GrpcClient`.
       """
     ],
     base_url: [

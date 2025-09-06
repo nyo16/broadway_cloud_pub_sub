@@ -38,8 +38,10 @@ defmodule BroadwayCloudPubSub.MixProject do
       {:nimble_options, "~> 0.3.7 or ~> 0.4 or ~> 1.0"},
       {:telemetry, "~> 0.4.3 or ~> 1.0"},
       {:goth, "~> 1.3", optional: true},
+      # {:pubsub_grpc, github: "nyo16/gcp_grpc_pubsub", optional: true},
       {:ex_doc, "~> 0.23", only: :docs},
-      {:bypass, "~> 2.1", only: :test}
+      {:bypass, "~> 2.1", only: :test},
+      {:httpoison, "~> 1.8", only: :test}
     ]
   end
 
